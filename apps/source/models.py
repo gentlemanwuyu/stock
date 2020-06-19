@@ -64,3 +64,23 @@ class Index(models.Model):
     exp_date = models.CharField(max_length=255, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class IndexDailyData(models.Model):
+    class Meta:
+        db_table = 'index_daily_data'
+        unique_together = ('ts_code', 'trade_date')
+
+    ts_code = models.CharField(max_length=255, default='')
+    trade_date = models.CharField(max_length=255, default='')
+    open = models.DecimalField(max_digits=8, decimal_places=2)
+    high = models.DecimalField(max_digits=8, decimal_places=2)
+    low = models.DecimalField(max_digits=8, decimal_places=2)
+    close = models.DecimalField(max_digits=8, decimal_places=2)
+    pre_close = models.DecimalField(max_digits=8, decimal_places=2)
+    change = models.DecimalField(max_digits=8, decimal_places=2)
+    pct_chg = models.DecimalField(max_digits=8, decimal_places=4)
+    vol = models.DecimalField(max_digits=14, decimal_places=4)
+    amount = models.DecimalField(max_digits=14, decimal_places=4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
