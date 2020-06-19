@@ -43,3 +43,24 @@ class StockDailyData(models.Model):
     amount = models.DecimalField(max_digits=14, decimal_places=4)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class Index(models.Model):
+    class Meta:
+        db_table = 'indexes'
+
+    ts_code = models.CharField(max_length=255, default='', unique=True)
+    name = models.CharField(max_length=255, default='', db_index=True)
+    fullname = models.CharField(max_length=255, null=True)
+    market = models.CharField(max_length=255, null=True)
+    publisher = models.CharField(max_length=255, null=True)
+    index_type = models.CharField(max_length=255, null=True)
+    category = models.CharField(max_length=255, null=True)
+    base_date = models.CharField(max_length=255, null=True)
+    base_point = models.DecimalField(max_digits=12, decimal_places=2)
+    list_date = models.CharField(max_length=255, null=True)
+    weight_rule = models.CharField(max_length=255, null=True)
+    desc = models.TextField(null=True)
+    exp_date = models.CharField(max_length=255, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

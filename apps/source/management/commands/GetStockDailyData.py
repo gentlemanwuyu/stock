@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from datetime import datetime
@@ -19,7 +21,7 @@ class Command(BaseCommand):
         self.end_at = None
         self.queue = Queue()
         self.token = settings.TUSHARE_API_TOKEN
-        self.ts = ts.set_token(self.token)
+        ts.set_token(self.token)
 
     def add_arguments(self, parser):
         # Named (optional) arguments
