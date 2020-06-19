@@ -3,7 +3,10 @@ from django.conf import settings
 from datetime import datetime
 from apps.source.models import Stock
 from apps.source.models import StockDailyData
+from queue import Queue
+from threading import Thread
 import tushare as ts
+import math
 
 
 class Command(BaseCommand):
@@ -14,6 +17,7 @@ class Command(BaseCommand):
         self.stocks = []
         self.start_at = None
         self.end_at = None
+        self.queue = Queue()
         self.token = settings.TUSHARE_API_TOKEN
         self.ts = ts.set_token(self.token)
 
@@ -35,11 +39,23 @@ class Command(BaseCommand):
             if self.stocks:
                 query = query.filter(ts_code__in=self.stocks)
             stocks = query.all()
+            # 将股票写入队列
             for stock in stocks:
-                self.handle_one_stock(stock)
+                self.queue.put(stock)
+            for i in range(10):
+                thread = Thread(target=self.cycle_get_queue)
+                thread.start()
         except Exception as e:
             print('[Exception]' + str(e))
         print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据结束')
+
+    def cycle_get_queue(self):
+        while True:
+            stock = self.queue.get()
+            if stock:
+                self.handle_one_stock(stock)
+            else:
+                return
 
     def handle_one_stock(self, stock):
         start_at = datetime.now().strftime('%Y%m%d')
@@ -53,6 +69,24 @@ class Command(BaseCommand):
         print(stock.ts_code + stock.name + '[' + start_at + '~' + end_at + ']')
         data = ts.pro_bar(ts_code=stock.ts_code, adj='qfq', start_date=start_at, end_date=end_at)
         for index, item in data.iterrows():
+            if math.isnan(item['open']):
+                item['open'] = 0.00
+            if math.isnan(item['high']):
+                item['high'] = 0.00
+            if math.isnan(item['low']):
+                item['low'] = 0.00
+            if math.isnan(item['close']):
+                item['close'] = 0.00
+            if math.isnan(item['pre_close']):
+                item['pre_close'] = 0.00
+            if math.isnan(item['change']):
+                item['change'] = 0.00
+            if math.isnan(item['pct_chg']):
+                item['pct_chg'] = 0.00
+            if math.isnan(item['vol']):
+                item['vol'] = 0.00
+            if math.isnan(item['amount']):
+                item['amount'] = 0.00
             StockDailyData.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
                                                     trade_date=item['trade_date'])
 
