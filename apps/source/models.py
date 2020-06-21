@@ -84,3 +84,14 @@ class IndexDailyData(models.Model):
     amount = models.DecimalField(max_digits=14, decimal_places=4)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class TradeCalendar(models.Model):
+    class Meta:
+        db_table = 'trade_calendars'
+        unique_together = ('exchange', 'cal_date')
+
+    exchange = models.CharField(max_length=255, default='')
+    cal_date = models.CharField(max_length=255, default='')
+    pretrade_date = models.CharField(max_length=255, null=True)
+    is_open = models.IntegerField(null=True)
