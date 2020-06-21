@@ -5,8 +5,8 @@ from django.conf import settings
 from datetime import datetime
 from apps.source.models import Stock
 from apps.source.models import StockDailyData
-from threading import Thread
 import tushare as ts
+import threading
 import math
 
 
@@ -41,9 +41,15 @@ class Command(BaseCommand):
                 query = query.filter(ts_code__in=self.stocks)
             stocks = query.all()
             self.stock_objs = list(stocks)
+            thread_list = []
             for i in range(10):
-                thread = Thread(target=self.cycle_get_queue)
-                thread.start()
+                t = threading.Thread(target=self.cycle_get_queue)
+                thread_list.append(t)
+            for t in thread_list:
+                t.setDaemon(True)
+                t.start()
+            for t in thread_list:
+                t.join()
         except Exception as e:
             print('[Exception]' + str(e))
         print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据结束')
