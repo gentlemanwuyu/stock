@@ -5,7 +5,6 @@ from django.conf import settings
 from datetime import datetime
 from apps.source.models import Stock
 from apps.source.models import StockDailyData
-from queue import Queue
 from threading import Thread
 import tushare as ts
 import math
@@ -17,15 +16,15 @@ class Command(BaseCommand):
     def __init__(self):
         self.all = False
         self.stocks = []
+        self.stock_objs = []
         self.start_at = None
         self.end_at = None
-        self.queue = Queue()
         self.token = settings.TUSHARE_API_TOKEN
         ts.set_token(self.token)
 
     def add_arguments(self, parser):
         # Named (optional) arguments
-        parser.add_argument('--all', action='store_true', dest='all', help='是否拉取所有数据')
+        parser.add_argument('--all', action='store_true', dest='all', help='是否拉取全部数据')
         parser.add_argument('--stocks', dest='stocks', help='拉取某些股票的数据')
         parser.add_argument('--start', dest='start_at', help='起始日期')
         parser.add_argument('--end', dest='end_at', help='结束日期')
@@ -41,9 +40,7 @@ class Command(BaseCommand):
             if self.stocks:
                 query = query.filter(ts_code__in=self.stocks)
             stocks = query.all()
-            # 将股票写入队列
-            for stock in stocks:
-                self.queue.put(stock)
+            self.stock_objs = list(stocks)
             for i in range(10):
                 thread = Thread(target=self.cycle_get_queue)
                 thread.start()
@@ -52,14 +49,19 @@ class Command(BaseCommand):
         print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据结束')
 
     def cycle_get_queue(self):
-        while True:
-            stock = self.queue.get()
+        while 0 < self.stock_objs.__len__():
+            stock = self.stock_objs.pop(0)
             if stock:
                 self.handle_one_stock(stock)
             else:
                 return
 
     def handle_one_stock(self, stock):
+        """
+        处理一个股票
+        :param stock:
+        :return:
+        """
         start_at = datetime.now().strftime('%Y%m%d')
         if self.all:
             start_at = stock.list_date
