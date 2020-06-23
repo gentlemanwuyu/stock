@@ -3,23 +3,23 @@
 from django.core.management.base import BaseCommand
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from apps.source.models import Stock
+from apps.source.models import Index
 from apps.source.models import TradeCalendar
-from apps.source.models import StockDailyData
-from apps.count.models import StockDailyAvg
+from apps.source.models import IndexDailyData
+from apps.count.models import IndexDailyAvg
 import threading
 
 
 class Command(BaseCommand):
-    help = '计算股票日线平均数据'
+    help = '计算指数日线平均数据'
     thread_num = 10  # 线程数
     periods = [5, 10, 20, 30, 60, 200]  # 平均线计算周期
     max_period = 200  # 最大计算周期
     all = False  # 是否获取全部数据
     start_at = None  # 命令行传入的开始日期
     end_at = None  # 命令行传入的结束日期
-    stocks = []  # 命令行传入的股票代码
-    stock_objs = []  # 股票集合
+    indexes = []  # 命令行传入的股票代码
+    index_objs = []  # 指数集合
     last_date = ''  # 默认的截止日期
     last_trade_date = ''  # 上一个交易日
     trade_dates = []
@@ -30,25 +30,25 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Named (optional) arguments
         parser.add_argument('--all', action='store_true', dest='all', help='是否拉取全部数据')
-        parser.add_argument('--stocks', dest='stocks', help='计算某些股票的数据')
+        parser.add_argument('--indexes', dest='indexes', help='计算某些指数的数据')
         parser.add_argument('--start', dest='start_at', help='起始日期')
         parser.add_argument('--end', dest='end_at', help='结束日期')
         parser.add_argument('--tn', dest='thread_num', help='线程数', type=int)
 
     def handle(self, *args, **options):
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本开始：')
+        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算指数日平均数据脚本开始：')
         try:
             self.init_params(args=args, options=options)
-            # 查询符合条件的股票
-            query = Stock.objects
-            if self.stocks:
-                query = query.filter(ts_code__in=self.stocks)
-            stocks = query.all()
-            self.stock_objs = list(stocks)
+            # 查询符合条件的指数
+            query = Index.objects
+            if self.indexes:
+                query = query.filter(ts_code__in=self.indexes)
+            indexes = query.all()
+            self.index_objs = list(indexes)
             # 多线程计算数据
             thread_list = []
             for i in range(self.thread_num):
-                t = threading.Thread(target=self.cycle_handle_stock)
+                t = threading.Thread(target=self.cycle_handle_index)
                 thread_list.append(t)
             for t in thread_list:
                 t.setDaemon(True)
@@ -57,44 +57,44 @@ class Command(BaseCommand):
                 t.join()
         except Exception as e:
             print('程序出现异常:' + str(e))
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本结束。')
+        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算指数日平均数据脚本结束。')
 
-    def cycle_handle_stock(self):
+    def cycle_handle_index(self):
         """
-        循环处理一个股票
+        循环处理一个指数
         :return:
         """
-        while 0 < self.stock_objs.__len__():
-            stock = self.stock_objs.pop(0)
-            if stock:
-                self.calc_one_stock(stock=stock)
+        while 0 < self.index_objs.__len__():
+            index = self.index_objs.pop(0)
+            if index:
+                self.calc_one_index(index=index)
             else:
                 return
 
-    def calc_one_stock(self, stock):
+    def calc_one_index(self, index):
         """
-        计算一个股票的数据
-        :param stock:
+        计算一个指数的数据
+        :param index:
         :return:
         """
         start_at = self.last_trade_date
         end_at = self.last_date
         if self.all:
-            start_at = stock.list_date
+            start_at = index.list_date
         else:
             if self.start_at:
                 start_at = self.start_at
             if self.end_at:
                 end_at = self.end_at
-        return self.calc_stock(stock=stock, start_at=start_at, end_at=end_at)
+        return self.calc_index(index=index, start_at=start_at, end_at=end_at)
 
-    def calc_stock(self, stock, start_at, end_at):
+    def calc_index(self, index, start_at, end_at):
         start = datetime.strptime(start_at, '%Y%m%d')
         end = datetime.strptime(end_at, '%Y%m%d')
         while start.__le__(end):
             curr_date = start.strftime('%Y%m%d')
             if curr_date in self.trade_dates:
-                data = StockDailyData.objects.filter(ts_code=stock.ts_code,
+                data = IndexDailyData.objects.filter(ts_code=index.ts_code,
                                                      trade_date__lte=curr_date).order_by('-trade_date')[
                        :self.max_period]
                 # 如果第一个对象的trade_date不等于curr_date，说明当天没有数据，则跳过
@@ -110,9 +110,9 @@ class Command(BaseCommand):
                             period_amount_avg = round(sum(period_amount_data) / period, 4)
                             item['a' + str(period)] = period_amount_avg
                     if item:
-                        item['ts_code'] = stock.ts_code
+                        item['ts_code'] = index.ts_code
                         item['trade_date'] = curr_date
-                        StockDailyAvg.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
+                        IndexDailyAvg.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
                                                                trade_date=item['trade_date'])
             # 日期加一天
             start = start + relativedelta(days=1)
@@ -127,8 +127,8 @@ class Command(BaseCommand):
         if options['thread_num']:
             self.thread_num = options['thread_num']
         self.all = options['all']
-        if options['stocks']:
-            self.stocks = options['stocks'].split(',')
+        if options['indexes']:
+            self.indexes = options['indexes'].split(',')
         if options['start_at']:
             self.start_at = options['start_at']
         if options['end_at']:
