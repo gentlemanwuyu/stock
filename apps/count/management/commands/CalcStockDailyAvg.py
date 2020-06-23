@@ -36,7 +36,7 @@ class Command(BaseCommand):
         parser.add_argument('--tn', dest='thread_num', help='线程数', type=int)
 
     def handle(self, *args, **options):
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均价格脚本开始：')
+        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本开始：')
         try:
             self.init_params(args=args, options=options)
             # 查询符合条件的股票
@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 t.join()
         except Exception as e:
             print('程序出现异常:' + str(e))
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均价格脚本结束。')
+        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本结束。')
 
     def cycle_handle_stock(self):
         """
@@ -98,24 +98,22 @@ class Command(BaseCommand):
                                                      trade_date__lte=curr_date).order_by('-trade_date')[
                        :self.max_period]
                 # 如果第一个对象的trade_date不等于curr_date，说明当天没有数据，则跳过
-                if curr_date != data[0].trade_date:
-                    print('[', curr_date , ']当天没有数据，跳过')
-                    continue
-                item = {}
-                for period in self.periods:
-                    period_data = data[:period]
-                    if period_data.__len__() == period:
-                        period_close_data = list(period_data.values_list('close', flat=True))
-                        period_close_avg = round(sum(period_close_data) / period, 2)
-                        item['p' + str(period)] = period_close_avg
-                        period_amount_data = list(period_data.values_list('amount', flat=True))
-                        period_amount_avg = round(sum(period_amount_data) / period, 4)
-                        item['a' + str(period)] = period_amount_avg
-                if item:
-                    item['ts_code'] = stock.ts_code
-                    item['trade_date'] = curr_date
-                    StockDailyAvg.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
-                                                           trade_date=item['trade_date'])
+                if data.__len__() > 0 and curr_date == data[0].trade_date:
+                    item = {}
+                    for period in self.periods:
+                        period_data = data[:period]
+                        if period_data.__len__() == period:
+                            period_close_data = list(map(lambda i: i.close, period_data))
+                            period_close_avg = round(sum(period_close_data) / period, 2)
+                            item['p' + str(period)] = period_close_avg
+                            period_amount_data = list(map(lambda i: i.amount, period_data))
+                            period_amount_avg = round(sum(period_amount_data) / period, 4)
+                            item['a' + str(period)] = period_amount_avg
+                    if item:
+                        item['ts_code'] = stock.ts_code
+                        item['trade_date'] = curr_date
+                        StockDailyAvg.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
+                                                               trade_date=item['trade_date'])
             # 日期加一天
             start = start + relativedelta(days=1)
 
