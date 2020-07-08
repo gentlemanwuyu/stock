@@ -10,6 +10,7 @@ import threading
 import tushare as ts
 import math
 import time
+import logging
 
 
 class Command(BaseCommand):
@@ -24,6 +25,7 @@ class Command(BaseCommand):
     thread_api_freq = 0  # 每个线程请求api的频率
 
     def __init__(self):
+        self.logger = logging.getLogger('log')
         ts.set_token(settings.TUSHARE_API_TOKEN)
 
     def add_arguments(self, parser):
@@ -35,7 +37,7 @@ class Command(BaseCommand):
         parser.add_argument('--tn', dest='thread_num', help='线程数', type=int)
 
     def handle(self, *args, **options):
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取指数日数据脚本开始：')
+        self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取指数日数据脚本开始：')
         # 初始化脚本参数
         self.init_params(args=args, options=options)
         try:
@@ -56,8 +58,8 @@ class Command(BaseCommand):
             for t in thread_list:
                 t.join()
         except Exception as e:
-            print('[Exception]' + str(e))
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取指数日数据脚本结束。')
+            self.log('[Exception]' + str(e))
+        self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取指数日数据脚本结束。')
 
     def cycle_get_queue(self):
         while 0 < self.index_objs.__len__():
@@ -68,7 +70,7 @@ class Command(BaseCommand):
                         self.handle_one_index(stock)
                         break
                     except IOError:
-                        print("请求频繁，睡眠10秒后继续请求")
+                        self.log("请求频繁，睡眠10秒后继续请求")
                         time.sleep(10)
             else:
                 return
@@ -133,7 +135,7 @@ class Command(BaseCommand):
             time_interval = (datetime.now() - while_start_at).seconds + 1
             if time_interval < self.thread_api_freq:
                 diff = self.thread_api_freq - time_interval
-                print('循环花了', time_interval, '秒，没有超过频率限制', self.thread_api_freq, '秒，睡眠', diff, '秒')
+                self.log('循环花了', time_interval, '秒，没有超过频率限制', self.thread_api_freq, '秒，睡眠', diff, '秒')
                 time.sleep(diff)
 
     def init_params(self, args, options):
@@ -149,3 +151,7 @@ class Command(BaseCommand):
         # 计算每个线程请求api的频率
         thread_times_pm = math.floor(self.api_times_pm / self.thread_num)
         self.thread_api_freq = math.ceil(60 / thread_times_pm)
+
+    def log(self, msg):
+        print(msg)
+        self.logger.info(msg)
