@@ -137,8 +137,7 @@ class Command(BaseCommand):
             time_interval = (datetime.now() - while_start_at).seconds + 1
             if time_interval < self.thread_api_freq:
                 diff = self.thread_api_freq - time_interval
-                self.log(
-                    '循环花了' + str(time_interval) + '秒，没有超过频率限制' + str(self.thread_api_freq) + '秒，睡眠' + str(diff) + '秒')
+                print('循环花了', time_interval, '秒，没有超过频率限制', self.thread_api_freq, '秒，睡眠', diff, '秒')
                 time.sleep(diff)
 
     def init_params(self, args, options):
