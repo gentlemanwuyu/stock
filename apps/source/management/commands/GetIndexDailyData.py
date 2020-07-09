@@ -6,6 +6,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from apps.source.models import Index
 from apps.source.models import IndexDailyData
+from apps.source.models import TradeCalendar
 import threading
 import tushare as ts
 import math
@@ -23,6 +24,7 @@ class Command(BaseCommand):
     end_at = None  # 命令行传入的结束时间
     api_times_pm = 100  # api每分钟请求限制
     thread_api_freq = 0  # 每个线程请求api的频率
+    last_2_trade_date = None  # 今日倒数第二个交易日
 
     def __init__(self):
         self.logger = logging.getLogger('log')
@@ -82,7 +84,7 @@ class Command(BaseCommand):
         :return:
         """
         # 计算起始日期与结束日期
-        start_at = datetime.now().strftime('%Y%m%d')
+        start_at = self.last_2_trade_date
         if self.all:
             start_at = index.list_date
         elif self.start_at:
@@ -135,7 +137,8 @@ class Command(BaseCommand):
             time_interval = (datetime.now() - while_start_at).seconds + 1
             if time_interval < self.thread_api_freq:
                 diff = self.thread_api_freq - time_interval
-                self.log('循环花了', time_interval, '秒，没有超过频率限制', self.thread_api_freq, '秒，睡眠', diff, '秒')
+                self.log(
+                    '循环花了' + str(time_interval) + '秒，没有超过频率限制' + str(self.thread_api_freq) + '秒，睡眠' + str(diff) + '秒')
                 time.sleep(diff)
 
     def init_params(self, args, options):
@@ -151,6 +154,11 @@ class Command(BaseCommand):
         # 计算每个线程请求api的频率
         thread_times_pm = math.floor(self.api_times_pm / self.thread_num)
         self.thread_api_freq = math.ceil(60 / thread_times_pm)
+        # 计算今日倒数第二个交易日
+        last_2_trade_date = TradeCalendar.objects.filter(cal_date__lt=datetime.now().strftime('%Y%m%d'),
+                                                         is_open=1).values_list('cal_date').order_by('-cal_date').all()[
+                            1:2]
+        self.last_2_trade_date = last_2_trade_date[0][0]
 
     def log(self, msg):
         print(msg)
