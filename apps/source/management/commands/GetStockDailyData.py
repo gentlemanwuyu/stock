@@ -10,6 +10,7 @@ from apps.source.models import TradeCalendar
 import tushare as ts
 import threading
 import math
+import logging
 
 
 class Command(BaseCommand):
@@ -24,6 +25,7 @@ class Command(BaseCommand):
     last_trade_date = ''  # 上一个交易日
 
     def __init__(self):
+        self.logger = logging.getLogger('log')
         ts.set_token(settings.TUSHARE_API_TOKEN)
 
     def add_arguments(self, parser):
@@ -35,7 +37,7 @@ class Command(BaseCommand):
         parser.add_argument('--tn', dest='thread_num', help='线程数', type=int)
 
     def handle(self, *args, **options):
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据脚本开始：')
+        self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据脚本开始：')
         # 初始化脚本参数
         self.init_params(args=args, options=options)
         try:
@@ -56,8 +58,8 @@ class Command(BaseCommand):
             for t in thread_list:
                 t.join()
         except Exception as e:
-            print('[Exception]' + str(e))
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据脚本结束。')
+            self.log('[Exception]' + str(e))
+        self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']获取股票日数据脚本结束。')
 
     def cycle_get_queue(self):
         while 0 < self.stock_objs.__len__():
@@ -154,3 +156,7 @@ class Command(BaseCommand):
         if not trade_calendar:
             raise Exception("获取今天日历失败")
         self.last_trade_date = trade_calendar.pretrade_date
+
+    def log(self, msg):
+        print(msg)
+        self.logger.info(msg)
