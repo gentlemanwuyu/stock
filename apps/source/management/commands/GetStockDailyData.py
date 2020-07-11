@@ -10,6 +10,7 @@ from apps.source.models import TradeCalendar
 import tushare as ts
 import threading
 import math
+import time
 import logging
 
 
@@ -19,6 +20,8 @@ class Command(BaseCommand):
     all = False  # 是否获取全部数据
     start_at = None  # 命令行传入的开始日期
     end_at = None  # 命令行传入的结束日期
+    api_times_pm = 500  # api每分钟请求限制
+    thread_api_freq = 0  # 每个线程请求api的频率
     stocks = []  # 命令行传入的股票代码
     stock_objs = []  # 股票集合
     last_date = ''  # 从api获取数据时默认的截止日期
@@ -106,59 +109,69 @@ class Command(BaseCommand):
         print('[' + stock.ts_code + ']' + stock.name + '，拉取股票全部数据[' + start_at + '~' + end_at + ']')
         self.get_stock_data(stock=stock, start_date=start_at, end_date=end_at)
 
-    @staticmethod
-    def get_stock_data(stock, start_date, end_date):
+    def get_stock_data(self, stock, start_date, end_date):
         """
-        获取股票数据，每次最多获取5000条
+        获取股票数据，每次最多获取5000条，每分钟最多请求500次
         :param stock: stock model对象
         :param start_date: 开始日期，格式Ymd，例如19991118
         :param end_date: 结束日期，格式Ymd，例如19991118
         :return:
         """
-        # 在起始日期和结束日期之间，每20年循环一次
-        start_obj = datetime.strptime(start_date, '%Y%m%d')
-        end_obj = datetime.strptime(end_date, '%Y%m%d')
-        while start_obj.__le__(end_obj):
-            after_20_years = start_obj + relativedelta(years=20)
-            if after_20_years.__lt__(end_obj):
-                print('[' + stock.ts_code + ']' + stock.name + '[' + start_obj.strftime(
-                    '%Y%m%d') + '~' + after_20_years.strftime(
-                    '%Y%m%d') + ']')
-                data = ts.pro_bar(ts_code=stock.ts_code, adj='qfq', start_date=start_obj.strftime('%Y%m%d'),
-                                  end_date=after_20_years.strftime('%Y%m%d'))
-                start_obj = after_20_years + relativedelta(days=1)
-            else:
-                print('[' + stock.ts_code + ']' + stock.name + '[' + start_obj.strftime(
-                    '%Y%m%d') + '~' + end_obj.strftime(
-                    '%Y%m%d') + ']')
-                data = ts.pro_bar(ts_code=stock.ts_code, adj='qfq', start_date=start_obj.strftime('%Y%m%d'),
-                                  end_date=end_obj.strftime('%Y%m%d'))
-                start_obj = end_obj + relativedelta(days=1)
-            # 写入数据到数据库
-            if data is None:
-                print("数据为None")
-                continue
-            for index, item in data.iterrows():
-                if math.isnan(item['open']):
-                    item['open'] = 0.00
-                if math.isnan(item['high']):
-                    item['high'] = 0.00
-                if math.isnan(item['low']):
-                    item['low'] = 0.00
-                if math.isnan(item['close']):
-                    item['close'] = 0.00
-                if math.isnan(item['pre_close']):
-                    item['pre_close'] = 0.00
-                if math.isnan(item['change']):
-                    item['change'] = 0.00
-                if math.isnan(item['pct_chg']):
-                    item['pct_chg'] = 0.00
-                if math.isnan(item['vol']):
-                    item['vol'] = 0.00
-                if math.isnan(item['amount']):
-                    item['amount'] = 0.00
-                StockDailyData.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
-                                                        trade_date=item['trade_date'])
+        try:
+            # 在起始日期和结束日期之间，每20年循环一次
+            start_obj = datetime.strptime(start_date, '%Y%m%d')
+            end_obj = datetime.strptime(end_date, '%Y%m%d')
+            while start_obj.__le__(end_obj):
+                while_start_at = datetime.now()
+                after_20_years = start_obj + relativedelta(years=20)
+                if after_20_years.__lt__(end_obj):
+                    print('[' + stock.ts_code + ']' + stock.name + '[' + start_obj.strftime(
+                        '%Y%m%d') + '~' + after_20_years.strftime(
+                        '%Y%m%d') + ']')
+                    data = ts.pro_bar(ts_code=stock.ts_code, adj='qfq', start_date=start_obj.strftime('%Y%m%d'),
+                                      end_date=after_20_years.strftime('%Y%m%d'))
+                    start_obj = after_20_years + relativedelta(days=1)
+                else:
+                    print('[' + stock.ts_code + ']' + stock.name + '[' + start_obj.strftime(
+                        '%Y%m%d') + '~' + end_obj.strftime(
+                        '%Y%m%d') + ']')
+                    data = ts.pro_bar(ts_code=stock.ts_code, adj='qfq', start_date=start_obj.strftime('%Y%m%d'),
+                                      end_date=end_obj.strftime('%Y%m%d'))
+                    start_obj = end_obj + relativedelta(days=1)
+                # 写入数据到数据库
+                if data is None:
+                    print("数据为None")
+                    continue
+                for index, item in data.iterrows():
+                    if math.isnan(item['open']):
+                        item['open'] = 0.00
+                    if math.isnan(item['high']):
+                        item['high'] = 0.00
+                    if math.isnan(item['low']):
+                        item['low'] = 0.00
+                    if math.isnan(item['close']):
+                        item['close'] = 0.00
+                    if math.isnan(item['pre_close']):
+                        item['pre_close'] = 0.00
+                    if math.isnan(item['change']):
+                        item['change'] = 0.00
+                    if math.isnan(item['pct_chg']):
+                        item['pct_chg'] = 0.00
+                    if math.isnan(item['vol']):
+                        item['vol'] = 0.00
+                    if math.isnan(item['amount']):
+                        item['amount'] = 0.00
+                    StockDailyData.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
+                                                            trade_date=item['trade_date'])
+                time_interval = (datetime.now() - while_start_at).seconds + 1
+                if time_interval < self.thread_api_freq:
+                    diff = self.thread_api_freq - time_interval
+                    print('循环花了', time_interval, '秒，没有超过频率限制', self.thread_api_freq, '秒，睡眠', diff, '秒')
+                    time.sleep(diff)
+        except IOError:
+            self.log("请求频繁，睡眠10秒后继续请求")
+            time.sleep(10)
+            self.get_stock_data(stock=stock, start_date=start_date, end_date=end_date)
 
     def init_params(self, args, options):
         if options['thread_num']:
@@ -182,6 +195,9 @@ class Command(BaseCommand):
         if not trade_calendar:
             raise Exception("获取今天日历失败")
         self.last_trade_date = trade_calendar.pretrade_date
+        # 计算每个线程请求api的频率
+        thread_times_pm = math.floor(self.api_times_pm / self.thread_num)
+        self.thread_api_freq = math.ceil(60 / thread_times_pm)
 
     def log(self, msg):
         print(msg)
