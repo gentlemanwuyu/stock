@@ -120,7 +120,7 @@ class Command(BaseCommand):
         end_obj = datetime.strptime(end_date, '%Y%m%d')
         while start_obj.__le__(end_obj):
             after_20_years = start_obj + relativedelta(years=20)
-            if after_20_years.__lt__(end_date):
+            if after_20_years.__lt__(end_obj):
                 print('[' + stock.ts_code + ']' + stock.name + '[' + start_obj.strftime(
                     '%Y%m%d') + '~' + after_20_years.strftime(
                     '%Y%m%d') + ']')
