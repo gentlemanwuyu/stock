@@ -8,6 +8,7 @@ from apps.source.models import TradeCalendar
 from apps.source.models import StockDailyData
 from apps.count.models import StockDailyAvg
 import threading
+import logging
 
 
 class Command(BaseCommand):
@@ -25,7 +26,7 @@ class Command(BaseCommand):
     trade_dates = []
 
     def __init__(self):
-        pass
+        self.logger = logging.getLogger('log')
 
     def add_arguments(self, parser):
         # Named (optional) arguments
@@ -36,7 +37,7 @@ class Command(BaseCommand):
         parser.add_argument('--tn', dest='thread_num', help='线程数', type=int)
 
     def handle(self, *args, **options):
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本开始：')
+        self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本开始：')
         try:
             self.init_params(args=args, options=options)
             # 查询符合条件的股票
@@ -56,8 +57,8 @@ class Command(BaseCommand):
             for t in thread_list:
                 t.join()
         except Exception as e:
-            print('程序出现异常:' + str(e))
-        print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本结束。')
+            self.log('程序出现异常:' + str(e))
+        self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']计算股票日平均数据脚本结束。')
 
     def cycle_handle_stock(self):
         """
@@ -148,3 +149,7 @@ class Command(BaseCommand):
         # 取出所有的交易日期
         trade_dates = TradeCalendar.objects.filter(is_open=1).values_list('cal_date', flat=True)
         self.trade_dates = list(trade_dates)
+
+    def log(self, msg):
+        print(msg)
+        self.logger.info(msg)
