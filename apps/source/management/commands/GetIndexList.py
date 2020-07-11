@@ -26,6 +26,7 @@ class Command(BaseCommand):
         'desc',
         'exp_date',
     ]
+    markets = ['SSE', 'SZSE']
 
     def __init__(self):
         self.logger = logging.getLogger('log')
@@ -37,11 +38,12 @@ class Command(BaseCommand):
 
         self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '][GetIndexList]脚本开始：')
         try:
-            data = pro.index_basic(fields=','.join(self.fields))
-            for index, item in data.iterrows():
-                if math.isnan(item['base_point']):
-                    item['base_point'] = 0.00
-                Index.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'])
+            for market in self.markets:
+                data = pro.index_basic(fields=','.join(self.fields), market=market)
+                for index, item in data.iterrows():
+                    if math.isnan(item['base_point']):
+                        item['base_point'] = 0.00
+                    Index.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'])
         except Exception as e:
             self.log('程序出现异常:' + str(e))
         self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '][GetIndexList]脚本结束。')
