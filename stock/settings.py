@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # 'django.contrib.staticfiles',
     'apps.source.apps.SourceConfig',
     'apps.count.apps.CountConfig',
+    'apps.strategy.apps.StrategyConfig',
 ]
 
 MIDDLEWARE = [
