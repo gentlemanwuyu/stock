@@ -2,6 +2,7 @@
 
 from django.core.management.base import BaseCommand
 from datetime import datetime
+from django_redis import get_redis_connection
 from utils import constants
 from django.db.models import Max
 from apps.source.models import Stock
@@ -14,10 +15,13 @@ import threading
 
 class Command(BaseCommand):
     help = '获取持续强势的股票'
+    redis_conn = None  # redis连接
+    redis_list_name = ''  # redis列表名
     start_date = None  # 起始日期
     end_date = None  # 结束日期
     days = 3  # 天数
-    max_rate = None  # 最大涨幅
+    trade_dates = []  # 交易日期
+    max_rates = {}  # 最大涨幅
     thread_num = 20  # 线程数
     stocks = []  # 股票集合
 
@@ -62,7 +66,12 @@ class Command(BaseCommand):
                 return
 
     def calc_one_stock(self, ts_code):
-        pass
+        stock_daily_data = StockDailyData.objects.filter(ts_code=ts_code, trade_date__in=self.trade_dates).values(
+            'trade_date', 'pct_chg')
+        for item in stock_daily_data:
+            if item['pct_chg'] <= self.max_rates[item['trade_date']]:
+                return False
+        self.redis_conn.rpush(self.redis_list_name, ts_code)
 
     def init_params(self, args, options):
         """
@@ -71,6 +80,8 @@ class Command(BaseCommand):
         :param options:
         :return:
         """
+        # redis连接
+        self.redis_conn = get_redis_connection('default')
         # 计算多少天
         if options['days']:
             self.days = options['days']
@@ -79,17 +90,24 @@ class Command(BaseCommand):
             self.start_date = options['start_at']
         else:
             today = datetime.now().strftime('%Y%m%d')
-            self.start_date = TradeCalendar.objects.filter(cal_date__lte=today, is_open=1).order_by('-id').values_list('cal_date').first()[0]
-        # 计算结束日期
-        end_date = TradeCalendar.objects.filter(cal_date__lte=self.start_date, is_open=1).order_by('-id').values_list('cal_date')[self.days-1:self.days]
-        self.end_date = end_date.first()[0]
+            self.start_date = TradeCalendar.objects.filter(cal_date__lte=today, is_open=1).order_by('-id').values_list(
+                'cal_date').first()[0]
+        # 计算出所有的交易日
+        trade_dates = TradeCalendar.objects.filter(cal_date__lte=self.start_date, is_open=1).order_by(
+            '-id').values_list(
+            'cal_date')[:self.days]
+        for item in trade_dates:
+            self.trade_dates.append(item[0])
         # 计算三个指数的最大涨幅
-        self.max_rate = IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES,
-                                                      trade_date=self.start_date).aggregate(Max('pct_chg'))[
-            'pct_chg__max']
+        for trade_date in self.trade_dates:
+            max_rate = IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES, trade_date=trade_date).aggregate(
+                Max('pct_chg'))['pct_chg__max']
+            self.max_rates[trade_date] = max_rate
         # 线程数
         if options['thread_num']:
             self.thread_num = options['thread_num']
+        # redis 列表名
+        self.redis_list_name = 'continuedStrongStocks_' + self.start_date + '_' + str(self.days)
 
     def log(self, msg):
         print(msg)

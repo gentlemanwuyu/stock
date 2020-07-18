@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import os
 import time
 import environ
+from utils.functions import make_cache_key
 
 # 读取环境变量
 env = environ.Env()
@@ -87,6 +88,19 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
+    }
+}
+
+# redis配置
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://:" + env('REDIS_PASSWORD') + '@' + env('REDIS_HOST') + ':' + env('REDIS_PORT') + '/' + env('REDIS_DB'),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "KEY_PREFIX": 'stock',
+        "KEY_FUNCTION": make_cache_key,
     }
 }
 
