@@ -34,7 +34,7 @@ class Command(BaseCommand):
         self.log('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '][GetContinuedStrongStock]脚本开始：')
         try:
             self.init_params(args=args, options=options)
-            self.stocks = list(Stock.objects.filter(ts_code='000998.SZ').values('ts_code').all())
+            self.stocks = list(Stock.objects.values('ts_code').all())
             # 多线程处理数据
             thread_list = []
             for i in range(self.thread_num):
@@ -79,9 +79,9 @@ class Command(BaseCommand):
             self.start_date = options['start_at']
         else:
             today = datetime.now().strftime('%Y%m%d')
-            self.start_date = TradeCalendar.objects.filter(cal_date__lte=today).order_by('-id').values_list('cal_date').first()[0]
+            self.start_date = TradeCalendar.objects.filter(cal_date__lte=today, is_open=1).order_by('-id').values_list('cal_date').first()[0]
         # 计算结束日期
-        end_date = TradeCalendar.objects.filter(cal_date__lte=self.start_date).order_by('-id').values_list('cal_date')[self.days-1:self.days]
+        end_date = TradeCalendar.objects.filter(cal_date__lte=self.start_date, is_open=1).order_by('-id').values_list('cal_date')[self.days-1:self.days]
         self.end_date = end_date.first()[0]
         # 计算三个指数的最大涨幅
         self.max_rate = IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES,
