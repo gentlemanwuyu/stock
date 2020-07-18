@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django.core.management.base import BaseCommand
+from django.conf import settings
 from datetime import datetime
 from django_redis import get_redis_connection
 from utils import constants
@@ -107,7 +108,10 @@ class Command(BaseCommand):
         if options['thread_num']:
             self.thread_num = options['thread_num']
         # redis 列表名
-        self.redis_list_name = 'continuedStrongStocks_' + self.start_date + '_' + str(self.days)
+        self.redis_list_name = settings.CACHES['default']['KEY_PREFIX'] + ':continuedStrongStocks_' + self.start_date + '_' + str(self.days)
+        # 如果该键值存在，则需要删掉
+        if self.redis_conn.exists(self.redis_list_name):
+            self.redis_conn.delete(self.redis_list_name)
 
     def log(self, msg):
         print(msg)
