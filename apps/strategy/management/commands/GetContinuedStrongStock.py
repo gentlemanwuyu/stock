@@ -85,7 +85,7 @@ class Command(BaseCommand):
         self.redis_conn = get_redis_connection('default')
         # 计算多少天
         if options['days']:
-            self.days = options['days']
+            self.days = int(options['days'])
         # 计算起始日期
         if options['start_at']:
             self.start_date = options['start_at']
