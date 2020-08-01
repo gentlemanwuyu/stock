@@ -31,7 +31,7 @@ SECRET_KEY = 'g)w9j10#w*!7)qav0!pec702s@o8@3$3njk17w#5whj1np!si3'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
 # Application definition
 
