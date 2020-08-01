@@ -1,0 +1,23 @@
+# uwsgi.ini file
+[uwsgi]
+
+# Django-related settings
+socket = :8000
+
+# the base directory (full path)
+chdir = stock
+wsgi-file=stock/stock/wsgi.py
+
+# Django s wsgi file
+module = web.wsgi
+
+# process-related settings
+master = true
+
+# maximum number of worker processes
+processes = 5
+
+#maximum number of worker threads
+threads = 5
+# try to remove all of the generated file/sockets
+vacuum = true
