@@ -13,7 +13,7 @@ class GetContinuedStrongList:
     start_date = None
     trade_dates = []
     max_rates = {}
-    thread_num = 30
+    thread_num = 50
     result = []
     stocks = []
 
@@ -52,6 +52,8 @@ class GetContinuedStrongList:
     def calc_one_stock(self, ts_code):
         stock_daily_data = StockDailyData.objects.filter(ts_code=ts_code, trade_date__in=self.trade_dates).values(
             'trade_date', 'pct_chg')
+        if not stock_daily_data.__len__():
+            return False
         for item in stock_daily_data:
             if item['pct_chg'] <= self.max_rates[item['trade_date']]:
                 return False
