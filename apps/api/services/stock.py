@@ -45,19 +45,19 @@ class GetContinuedStrongList:
         while 0 < self.stocks.__len__():
             stock = self.stocks.pop(0)
             if stock:
-                self.calc_one_stock(stock['ts_code'])
+                self.calc_one_stock(stock)
             else:
                 return
 
-    def calc_one_stock(self, ts_code):
-        stock_daily_data = StockDailyData.objects.filter(ts_code=ts_code, trade_date__in=self.trade_dates).values(
+    def calc_one_stock(self, stock: Stock):
+        stock_daily_data = StockDailyData.objects.filter(ts_code=stock['ts_code'], trade_date__in=self.trade_dates).values(
             'trade_date', 'pct_chg')
         if not stock_daily_data.__len__():
             return False
         for item in stock_daily_data:
             if item['pct_chg'] <= self.max_rates[item['trade_date']]:
                 return False
-        self.result.append(ts_code)
+        self.result.append(stock)
 
     def init_params(self):
         # 计算起始日期
@@ -78,4 +78,4 @@ class GetContinuedStrongList:
             IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES, trade_date=trade_date).aggregate(
                 Max('pct_chg'))['pct_chg__max']
             self.max_rates[trade_date] = max_rate
-        self.stocks = list(Stock.objects.values('ts_code').all())
+        self.stocks = list(Stock.objects.values('ts_code', 'name').all())
