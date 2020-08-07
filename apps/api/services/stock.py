@@ -6,6 +6,8 @@ from apps.source.models import Stock
 from utils import constants
 from django.db.models import Max
 import threading
+import logging
+import pandas as pd
 
 
 class GetContinuedStrongList:
@@ -16,8 +18,10 @@ class GetContinuedStrongList:
     thread_num = 50
     result = []
     stocks = []
+    df = None
 
     def __init__(self, params):
+        self.logger = logging.getLogger('log')
         if 'days' in params.keys():
             self.days = int(params['days'])
         if 'start_date' in params.keys():
@@ -50,12 +54,14 @@ class GetContinuedStrongList:
                 return
 
     def calc_one_stock(self, stock: Stock):
-        stock_daily_data = StockDailyData.objects.filter(ts_code=stock['ts_code'], trade_date__in=self.trade_dates).values(
-            'trade_date', 'pct_chg')
-        if not stock_daily_data.__len__():
+        stock_daily_data = self.df[self.df.ts_code == stock['ts_code']]
+        if stock_daily_data.__len__() < self.days:
+            # TODO 将数据缺失的代码丢到队列中
+            self.logger.info('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']股票[' + stock['ts_code'] + ']数据缺失')
             return False
-        for item in stock_daily_data:
-            if item['pct_chg'] <= self.max_rates[item['trade_date']]:
+
+        for index, stock_daily_item in stock_daily_data.iterrows():
+            if stock_daily_item['pct_chg'] <= self.max_rates[stock_daily_item['trade_date']]:
                 return False
         self.result.append(stock)
 
@@ -75,7 +81,15 @@ class GetContinuedStrongList:
             # 计算三个指数的最大涨幅
         for trade_date in self.trade_dates:
             max_rate = \
-            IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES, trade_date=trade_date).aggregate(
-                Max('pct_chg'))['pct_chg__max']
-            self.max_rates[trade_date] = max_rate
+                IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES, trade_date=trade_date).aggregate(
+                    Max('pct_chg'))['pct_chg__max']
+            self.max_rates[trade_date] = float(max_rate)
         self.stocks = list(Stock.objects.values('ts_code', 'name').all())
+        # 从数据库中查出所有要处理的数据，转成dataFrame
+        ts_codes = [stock['ts_code'] for stock in self.stocks]
+        columns = ['ts_code', 'trade_date', 'pct_chg']
+        stock_daily_data = StockDailyData.objects.filter(ts_code__in=ts_codes,
+                                                         trade_date__in=self.trade_dates).values_list('ts_code',
+                                                                                                      'trade_date',
+                                                                                                      'pct_chg').all()
+        self.df = pd.DataFrame(list(stock_daily_data), columns=columns)
