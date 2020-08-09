@@ -15,7 +15,7 @@ class GetContinuedStrongList:
     start_date = None
     trade_dates = []
     max_rates = {}
-    thread_num = 50
+    thread_num = 100
     result = []
     stocks = []
     df = None
