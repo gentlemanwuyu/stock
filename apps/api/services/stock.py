@@ -93,3 +93,4 @@ class GetContinuedStrongList:
                                                                                                       'trade_date',
                                                                                                       'pct_chg').all()
         self.df = pd.DataFrame(list(stock_daily_data), columns=columns)
+        self.result = []
