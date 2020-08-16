@@ -3,7 +3,7 @@ from apps.source.models import TradeCalendar
 from apps.source.models import IndexDailyData
 from apps.source.models import StockDailyData
 from apps.source.models import Stock
-from utils import constants
+from utils.enums import IndexEnum
 from django.db.models import Max
 import threading
 import logging
@@ -81,7 +81,7 @@ class GetContinuedStrongList:
             # 计算三个指数的最大涨幅
         for trade_date in self.trade_dates:
             max_rate = \
-                IndexDailyData.objects.filter(ts_code__in=constants.NORMAL_INDEXES, trade_date=trade_date).aggregate(
+                IndexDailyData.objects.filter(ts_code__in=IndexEnum.NORMALS, trade_date=trade_date).aggregate(
                     Max('pct_chg'))['pct_chg__max']
             self.max_rates[trade_date] = float(max_rate)
         self.stocks = list(Stock.objects.values('ts_code', 'name').all())
