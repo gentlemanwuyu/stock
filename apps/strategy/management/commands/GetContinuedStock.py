@@ -118,8 +118,7 @@ class Command(BaseCommand):
             trade_dates = self.period_trade_dates[:day]
             data = df[df.trade_date.isin(trade_dates)]
             if data.__len__() < day:
-                self.logger.info(
-                    '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']股票[' + ts_code + ']数据缺失')
+                print('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + ']股票[' + ts_code + ']数据缺失')
                 return False
             # 强势
             strong_flag = True
