@@ -36,8 +36,8 @@ class GetContinuedStrongList:
         return list(stocks)
 
     def init_params(self):
-        # 计算起始日期
+        # 计算起始日期(交易日)
         if not self.start_date:
-            today = datetime.now().strftime('%Y%m%d')
-            self.start_date = TradeCalendar.objects.filter(cal_date__lte=today, is_open=1).order_by('-id').values_list(
-                'cal_date').first()[0]
+            self.start_date = datetime.now().strftime('%Y%m%d')
+        self.start_date = TradeCalendar.objects.filter(cal_date__lte=self.start_date, is_open=1).order_by('-id').values_list(
+            'cal_date').first()[0]
