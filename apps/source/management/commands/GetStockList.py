@@ -39,6 +39,8 @@ class Command(BaseCommand):
         try:
             data = pro.stock_basic(list_status='L', fields=','.join(self.fields))
             for index, item in data.iterrows():
+                if not item['enname']:
+                    item['enname'] = ''
                 Stock.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'])
         except Exception as e:
             self.log('程序出现异常:' + str(e))
