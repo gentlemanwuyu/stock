@@ -95,3 +95,18 @@ class TradeCalendar(models.Model):
     cal_date = models.CharField(max_length=255, default='')
     pretrade_date = models.CharField(max_length=255, null=True)
     is_open = models.IntegerField(null=True)
+
+
+class StockName(models.Model):
+    class Meta:
+        db_table = 'stock_names'
+        unique_together = ('ts_code', 'start_date')
+
+    ts_code = models.CharField(max_length=255, default='')
+    name = models.CharField(max_length=255, null=True)
+    start_date = models.CharField(max_length=255, null=True)
+    end_date = models.CharField(max_length=255, null=True)
+    ann_date = models.CharField(max_length=255, null=True)
+    change_reason = models.CharField(max_length=255, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
