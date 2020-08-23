@@ -118,8 +118,8 @@ class StockIncome(models.Model):
         unique_together = ('ts_code', 'end_date')
 
     ts_code = models.CharField(max_length=255, default='')  # TS代码
-    ann_date = models.CharField(max_length=255, default='')  # 公告日期
-    f_ann_date = models.CharField(max_length=255, default='')  # 实际公告日期
+    ann_date = models.CharField(max_length=255, null=True)  # 公告日期
+    f_ann_date = models.CharField(max_length=255, null=True)  # 实际公告日期
     end_date = models.CharField(max_length=255, default='')  # 报告期
     report_type = models.IntegerField(null=True)  # 报告类型
     comp_type = models.IntegerField(null=True)  # 公司类型

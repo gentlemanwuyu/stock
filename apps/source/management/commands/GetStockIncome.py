@@ -8,12 +8,13 @@ from apps.source.models import StockIncome
 import tushare as ts
 import threading
 import logging
+import time
 
 
 class Command(BaseCommand):
     help = '获取股票利润表'
     fields = []
-    thread_num = 50  # 线程数
+    thread_num = 10  # 线程数
     stocks = []  # 命令行传入的股票代码
     stock_objs = []  # 股票集合
 
@@ -65,12 +66,17 @@ class Command(BaseCommand):
         :param stock:
         :return:
         """
-        df = ts.pro_api().income(ts_code=stock.ts_code, fields=','.join(self.fields))
-        # 将NaN替换成None
-        df = df.where(df.notnull(), None)
-        for index, item in df.iterrows():
-            StockIncome.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
-                                                 end_date=item['end_date'])
+        try:
+            df = ts.pro_api().income(ts_code=stock.ts_code, fields=','.join(self.fields))
+            # 将NaN替换成None
+            df = df.where(df.notnull(), None)
+            for index, item in df.iterrows():
+                StockIncome.objects.update_or_create(defaults=dict(item), ts_code=item['ts_code'],
+                                                     end_date=item['end_date'])
+        except Exception as e:
+            print(e)
+            time.sleep(10)
+            return self.handle_one_stock(stock)
 
     def init_params(self, args, options):
         # 所有字段
