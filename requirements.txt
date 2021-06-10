@@ -2,7 +2,7 @@ beautifulsoup4==4.9.1
 bs4==0.0.1
 certifi==2020.4.5.2
 chardet==3.0.4
-Django==2.1.4
+Django==2.2.24
 django-cors-headers==3.4.0
 django-environ==0.4.5
 django-redis==4.4.0
